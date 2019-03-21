@@ -94,16 +94,24 @@ function uninstall() {
   echo -e "Uninstalling..."
 
   echo "Removing API actions..."
-  bx wsk api delete /v1
+  ibmcloud fn api delete /cat-v1
 
   echo "Removing actions..."
-  bx wsk action delete cat/cat-post
-  bx wsk action delete cat/cat-put
-  bx wsk action delete cat/cat-get
-  bx wsk action delete cat/cat-delete
+  ibmcloud fn action delete cat-package/cat-post
+  ibmcloud fn action delete cat-package/cat-put
+  ibmcloud fn action delete cat-package/cat-get
+  ibmcloud fn action delete cat-package/cat-delete  
+  ibmcloud fn action delete cat-package/send_email
+
+  echo 'Removing trigger...'
+  ibmcloud fn trigger delete crimson_cat_trigger
+
+  echo 'Removing rule...'
+  ibmcloud fn rule delete crimson-cat-rule
 
   echo "Removing package..."
-  bx wsk package delete cat
+  ibmcloud fn package delete cat-package
+  ibmcloud fn package delete sfhtml5-cloudant-package
 
   echo -e "Uninstall Complete"
 }

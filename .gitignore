@@ -1,5 +1,6 @@
 .DS_Store
 local.env
+*env.json
 *.zip
 node_modules
 mysql.key

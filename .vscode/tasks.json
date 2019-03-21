@@ -1,0 +1,29 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+      {
+          "label": "Deploy to OpenWhisk",
+          "type": "shell",
+          "command": "wsk action update",
+          "args": [
+            "${input:actionName}"
+        ],
+          "group": "build",
+          "presentation": {
+              "reveal": "always",
+              "panel": "new"
+          }
+      }
+  ],
+  "inputs": [
+    {
+        "id": "actionName",
+        "type": "promptString",
+        "description": "Name your action.",
+        "default": "${file}"
+        // type specific configuration attributes
+    }
+]
+}

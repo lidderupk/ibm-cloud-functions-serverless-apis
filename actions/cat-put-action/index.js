@@ -16,62 +16,67 @@
 
 
 /**
- * This action updates a Cat by ID in a MySQL Database
+ * This action removes a Cat by ID from a MySQL database
  *
- * @param   params.MYSQL_HOSTNAME    MySQL hostname
- * @param   params.MYSQL_PORT        MySQL port
- * @param   params.MYSQL_USERNAME    MySQL username
- * @param   params.MYSQL_PASSWORD    MySQL password
- * @param   params.MYSQL_DATABASE    MySQL database
- * @param   params.name              Name of the cat to insert into the table
- * @param   params.color             Color of the cat to insert into the table
-
+ * @param {Object} params - Input to the action
+ * @param {string} params.CLOUDANT_URL - Full cloudant URL from the dashboard
+ * @param {string} params.CLOUDANT_API_KEY - Cloudant API key from the dashboard
+ * @param {string} params.id - cat id to retreive
+ * @param {string} params.name - cat name to update
+ * @param {string} params.color - cat color to update
+ *
  * @return  Promise for the MySQL result
  */
-function myAction(params) {
-
+function main(params) {
   return new Promise(function(resolve, reject) {
-    console.log('Connecting to MySQL database');
-    var mysql = require('promise-mysql');
-    var connection;
-    mysql.createConnection({
-      host: params.MYSQL_HOSTNAME,
-      port: params.MYSQL_PORT,
-      user: params.MYSQL_USERNAME,
-      password: params.MYSQL_PASSWORD,
-      database: params.MYSQL_DATABASE
-    }).then(function(conn) {
-      connection = conn;
-      console.log('Updating the cat');
-      var queryText = 'UPDATE cats SET name=?, color=? WHERE id=?';
-      var update = connection.query(queryText, [params.name, params.color, params.id]);
-      connection.end();
-      return update;
-    }).then(function(update) {
-      resolve({
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: {
-          success: "Cat updated."
-        }
-      });
-    }).catch(function(error) {
-      if (connection && connection.end) connection.end();
-      console.log(error);
-      reject({
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        statusCode: 500,
-        body: {
-          error: "Error."
-        }
-      });
-    });
-  });
+    console.log('Connecting to Cloudant');
+    // first get the id to get the revision, then delete.
+    // throw error if the id is not there or if there is problem in deleting the
+    // document
 
+    const Cloudant = require('@cloudant/cloudant');
+
+    const cloudant = Cloudant({
+      url: params.CLOUDANT_URL,
+      plugins: {iamauth: {iamApiKey: params.CLOUDANT_API_KEY}}
+    });
+
+    const catsDb = cloudant.use('cats');
+    catsDb.find({selector: {_id: params.id}})
+        .then(result => {
+          if (result.docs[0]) {
+            return result.docs[0];
+          } else {
+            throw new Error(`No cats found with id ${params.id}`)
+          }
+        })
+        .then(cat => {
+          console.log('cat found ... then update cat !');
+          console.log(`old cat: ${JSON.stringify(cat)}`);
+          return catsDb.insert({
+            _id: cat._id,
+            _rev: cat._rev,
+            name: params.name,
+            color: params.color
+          })
+        })
+        .then(result => {
+          console.log(result);
+          resolve({
+            statusCode: 200,
+            headers: {'Content-Type': 'application/json'},
+            body: {success: 'Cat updated.'}
+          });
+        })
+        .catch(err => {
+          console.log('final catch');
+          reject({
+            headers: {'Content-Type': 'application/json'},
+            statusCode: 500,
+            body: {error: 'Cat could not be updated.'}
+          });
+        });
+  });
 }
 
-exports.main = myAction;
+exports.main = main;

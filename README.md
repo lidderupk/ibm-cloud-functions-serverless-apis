@@ -1,75 +1,176 @@
 # Serverless APIs with IBM Cloud Functions (powered by Apache OpenWhisk)
 
-*Read this in other languages: [한국어](README-ko.md), [日本語](README-ja.md), [繁體中文](README-zhTW.md).*
+This repository was forked from [ibm-cloud-functions-serverless-apis](https://github.com/IBM/ibm-cloud-functions-serverless-apis). I have made a few changes
+1. Replaced mySQL with Cloudant as the persistance store.
+2. Added an action that uses SendGrid to send an email when a cat with `crimson` color is added to the database.
 
-This project shows how serverless, event-driven architectures can execute code that scales automatically in response to demand from HTTP REST API calls. No resources are consumed until the API endpoints are called. When they are called, resources are provisioned to exactly match the current load needed by each HTTP method independently.
+This project shows how serverless, event-driven architectures can execute code that scales automatically in response to demand from HTTP REST API calls. No resources are consumed until the API endpoints are called. When they are called, resources are provisioned to exactly match the current load needed by each HTTP method independently. Additionally, the project also shows how to use `feeds` and `triggers` to fire `actions` using `rules`.
 
-It shows four IBM Cloud Functions (powered by Apache OpenWhisk) actions (written in JavaScript) that write and read data in a MySQL database. This demonstrates how actions can work with supporting data services and execute logic in response to HTTP requests.
+It shows four IBM Cloud Functions (powered by Apache OpenWhisk) actions (written in JavaScript) that write and read data in a Clouant noSQL database. This demonstrates how actions can work with supporting data services and execute logic in response to HTTP requests.
 
 One action is mapped to HTTP POST requests. It inserts the supplied cat name and color parameters into the database. A second action is mapped to PUT requests to update those fields for an existing cat. A third action is mapped to GET requests that return specific cat data. A fourth action deletes a given cat data.
 
-The Node.js runtime on the IBM Cloud provides a built-in whitelist of npm modules. This demo also highlights how additional Node.js dependencies – such as the MySQL client – can be packaged in a ZIP file with custom actions to provide a high level of extensibility.
+The Node.js runtime on the IBM Cloud provides a built-in whitelist of npm modules. This demo also highlights how additional Node.js dependencies – such as the SendGrid client – can be packaged in a ZIP file with custom actions to provide a high level of extensibility.
 
 ![Sample Architecture](docs/arch_buildserverless.png)
 
 ## Included components
 
 - IBM Cloud Functions (powered by Apache OpenWhisk)
-- ClearDB or Compose (MySQL)
+- IBM Cloudant
 
 ## Prerequisite
 
 You should have a basic understanding of the OpenWhisk programming model. If not, [try the action, trigger, and rule demo first](https://github.com/IBM/openwhisk-action-trigger-rule).
 
-Also, you'll need an IBM Cloud account and the latest [OpenWhisk command line tool (`bx wsk`) installed and on your PATH](https://github.com/IBM/openwhisk-action-trigger-rule/blob/master/docs/OPENWHISK.md).
+Also, you'll need an IBM Cloud account and the latest [OpenWhisk command line tool (`ibmcloud fn`) installed and on your PATH](https://cloud.ibm.com/docs/cli?topic=cloud-cli-ibmcloud-cli#overview).
 
 As an alternative to this end-to-end example, you might also consider the more [basic "building block" version](https://github.com/IBM/openwhisk-rest-api-trigger) of this sample.
 
 ## Steps
 
-1. [Provision MySQL](#1-provision-mysql)
+1. [Provision Cloudant](#1-provision-cloudant)
 2. [Create OpenWhisk actions and mappings](#2-create-openwhisk-actions-and-mappings)
 3. [Test API endpoints](#3-test-api-endpoints)
 4. [Delete actions and mappings](#4-delete-actions-and-mappings)
 5. [Recreate deployment manually](#5-recreate-deployment-manually)
 
-## 1. Provision MySQL
+## 1. Provision Cloudant
 
-Log into the IBM Cloud and provision a [ClearDB](https://console.ng.bluemix.net/catalog/services/cleardb-mysql-database/) or a [Compose for MySQL](https://console.ng.bluemix.net/catalog/services/compose-for-mysql/) database instance. ClearDB has a free tier for simple testing, while Compose has tiers for larger workloads.
+Log into the IBM Cloud and provision a [Cloudant](https://console.ng.bluemix.net/catalog/services/cleardb-mysql-database/) database instance. Cloudant has a free tier for simple testing.
 
-- For [ClearDB](https://console.ng.bluemix.net/catalog/services/cleardb-mysql-database/), log into the ClearDB dashboard, and select the default database created for you. Get the user, password and host information under "Endpoint Information".
+![](docs/cloudant-catalog-search.jpg)
 
-- For [Compose](https://console.ng.bluemix.net/catalog/services/compose-for-mysql/), get the information from the `Service Credentials` tab in the IBM Cloud console.
+Provision the lite tier of the Cloudant Service
 
-Copy `template.local.env` to a new file named `local.env` and update the `MYSQL_HOSTNAME`, `MYSQL_USERNAME`, `MYSQL_PASSWORD` and `MYSQL_DATABASE` for your MySQL instance.
+![](docs/cloudant-create-instance.jpg)
+
+
+Copy `local.env.json` to a new file named `env.json` and update the `CLOUDANT_API_KEY`, and `CLOUDANT_URL` for your Cloudant instance. You can get these credentials from the `Cloudant` dashboard as shown here:
+
+![](docs/cloudant-credentials.jpg)
 
 ## 2. Create OpenWhisk actions and mappings
 
-`deploy.sh` is a convenience script reads the environment variables from `local.env` and creates the OpenWhisk actions and API mappings on your behalf. Later you will run these commands yourself.
+### Create a package to host our actions
 
-```bash
-./deploy.sh --install
+```
+wsk package create cat-package -P env.json
+```
+The -P binds the properties in the `env.json` file at the package level and all the actions inside the package can reference these parameters.
+### Create cat-get action
+
+```
+wsk action create cat-package/cat-get actions/cat-get-action/index.js --kind nodejs:10
 ```
 
-> **Note**: If you see any error messages, refer to the [Troubleshooting](#troubleshooting) section below. You can also explore [Alternative deployment methods](#alternative-deployment-methods).
+The `cat-get` action will be created inside the `cat-package`. We explicitly specify nodejs10 runtime as that has the `@cloudant/cloudant` npm package pre-installed. We can now try this action out by using the `invoke` command.
+
+```
+wsk action invoke cat-package/cat-get -r
+```
+
+Since we did not pass in any parameters, it just returns the first cat it finds in the database. We can also pass in an id as follows
+
+```
+wsk action invoke cat-package/cat-get -p id "35790b1e95675fc7569b7d2d1c5a4e1a" -r
+```
+
+### Create cat-delete action
+```
+wsk action create cat-package/cat-delete actions/cat-get-action/index.js --kind nodejs:10
+```
+The action first finds the cat with the provided `id` and then `destroys` the cat.
+### Create cat-post action
+
+```
+wsk action create cat-package/cat-post actions/cat-post-action/index.js --kind nodejs:10
+```
+### Create cat-put action
+
+```
+wsk action create cat-package/cat-put actions/cat-post-action/index.js --kind nodejs:10
+```
+### Create API endpoints
+
+```
+wsk action update cat-package/cat-get --web true
+wsk api create /cats-v1 /cat GET cat-package/cat-get -n 'cat api'
+```
+
+```
+wsk action update cat-package/cat-delete --web true
+wsk api create /cats-v1 /cat DELETE cat-package/cat-delete -n 'cat api'
+```
+
+```
+wsk action update cat-package/cat-post --web true
+wsk api create /cats-v1 /cat POST cat-package/cat-POST -n 'cat api'
+```
+
+
+```
+wsk action update cat-package/cat-put --web true
+wsk api create /cats-v1 /cat PUT cat-package/cat-put -n 'cat api'
+```
+
+
+### bind /whisk.system/cloudant action to personal namespace
+
+```
+wsk package bind /whisk.system/cloudant sfhtml5-cloudant-package
+```
+
+### bind the cloudant instance to the newly created package so that the credentails are automatically made available
+
+```
+ibmcloud fn service bind cloudantnosqldb sfhtml5-cloudant-package --instance Cloudant-s6
+```
+
+Show them how to get the servicename from the UI and the command line.
+### Create SendGrid Service
+<!-- show sendgrid screenshots -->
+### Create send-email action
+Creat the zip file so that the node_modules are packaged up inside our installable.
+```
+zip -r sendmail.zip .
+```
+We can now deploy the zip file to the IBM Cloud Functions.
+```
+wsk action create cat-package/send_email --kind nodejs:default sendmail.zip -P env.json
+```
+### create trigger `crimson_cat_trigger` that listens to the **change_action** feed
+
+```
+wsk trigger create crimson_cat_trigger --feed sfhtml5-cloudant-package/changes --param dbname cats --param filter "color/crimson-color
+```
+
+### create rule that links the `crimson_cat_trigger` trigger with the `send_email` action
+```
+wsk rule create crimson-cat-rule crimson_cat_trigger cat-package/send_email
+```
 
 ## 3. Test API endpoints
 
-There are four helper scripts that simulate HTTP API clients to create, get, update and delete entities against the `/v1/cat` endpoint.
+### Show API calls on postman
+
+There are four helper scripts that simulate HTTP API clients to create, get, update and delete entities against the `/cat-v1/cat` endpoint.
 
 ```bash
-# POST /v1/cat {"name": "Tarball", "color": "Black"}
+# POST /cat-v1/cat {"name": "Tarball", "color": "Black"}
 client/cat-post.sh Tarball Black
 
-# GET /v1/cat?id=1
+# GET /cat-v1/cat?id=1
 client/cat-get.sh 1 # Or whatever integer ID was returned by the command above
 
-# PUT /v1/cat {"id": 1, "name": "Tarball", "color": "Gray"}
+# PUT /cat-v1/cat {"id": 1, "name": "Tarball", "color": "Gray"}
 client/cat-put.sh 1 Tarball Gray
 
-# DELETE /v1/cat?id=1
+# DELETE /cat-v1/cat?id=1
 client/cat-delete.sh 1
 ```
+
+**OR USE POSTMAN**
 
 ## 4. Delete actions and mappings
 
@@ -209,23 +310,23 @@ Now map a resource endpoint (`/cat`) to the `GET`, `DELETE`, `PUT`, and `POST` H
 
 ```bash
 # Create
-bx wsk api create -n "Cats API" /v1 /cat post cat/cat-post
-bx wsk api create /v1 /cat put cat/cat-put
-bx wsk api create /v1 /cat get cat/cat-get
-bx wsk api create /v1 /cat delete cat/cat-delete
+bx wsk api create -n "Cats API" /cat-v1 /cat post cat/cat-post
+bx wsk api create /cat-v1 /cat put cat/cat-put
+bx wsk api create /cat-v1 /cat get cat/cat-get
+bx wsk api create /cat-v1 /cat delete cat/cat-delete
 
 # Test
 
-# POST /v1/cat {"name": "Tarball", "color": "Black"}
+# POST /cat-v1/cat {"name": "Tarball", "color": "Black"}
 client/cat-post.sh Tarball Black
 
-# GET /v1/cat?id=1
+# GET /cat-v1/cat?id=1
 client/cat-get.sh 1 # Replace 1 with the id returned from the POST action above
 
-# PUT /v1/cat {"id": 1, "name": "Tarball", "color": "Gray"}
+# PUT /cat-v1/cat {"id": 1, "name": "Tarball", "color": "Gray"}
 client/cat-put.sh 1 Tarball Gray
 
-# DELETE /v1/cat?id=1
+# DELETE /cat-v1/cat?id=1
 client/cat-delete.sh 1
 ```
 
@@ -234,7 +335,7 @@ client/cat-delete.sh 1
 Remove the API mappings and delete the actions.
 
 ```bash
-bx wsk api delete /v1
+bx wsk api delete /cat-v1
 bx wsk action delete cat/cat-post
 bx wsk action delete cat/cat-put
 bx wsk action delete cat/cat-get
