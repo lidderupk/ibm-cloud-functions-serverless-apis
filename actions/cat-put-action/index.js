@@ -55,6 +55,8 @@ function main(params) {
           console.log(`old cat: ${JSON.stringify(cat)}`);
           const new_name = params.name ? params.name : cat.name;
           const new_color = params.color ? params.color : cat.color;
+          console.log(`new_name: ${new_name}`);
+          console.log(`new_color: ${new_color}`);
           return catsDb.insert({
             _id: cat._id,
             _rev: cat._rev,
