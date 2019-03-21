@@ -144,7 +144,7 @@ wsk action create cat-package/send_email --kind nodejs:default sendmail.zip -P e
 ### create trigger `crimson_cat_trigger` that listens to the **/whisk.system/cloudant/changes** feed
 
 ```
-wsk trigger create crimson_cat_trigger --feed sfhtml5-cloudant-package/changes --param dbname cats --param filter "color/crimson-color
+wsk trigger create crimson_cat_trigger --feed sfhtml5-cloudant-package/changes --param dbname cats --param filter "color/crimson-color"
 ```
 
 ### create rule that links the `crimson_cat_trigger` trigger with the `send_email` action
