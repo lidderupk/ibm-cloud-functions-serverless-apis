@@ -53,6 +53,8 @@ function main(params) {
         .then(cat => {
           console.log('cat found ... then update cat !');
           console.log(`old cat: ${JSON.stringify(cat)}`);
+          const new_name = params.name ? params.name : cat.name;
+          const new_color = params.color ? params.color : cat.color;
           return catsDb.insert({
             _id: cat._id,
             _rev: cat._rev,

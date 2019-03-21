@@ -89,7 +89,7 @@ wsk action create cat-package/cat-post actions/cat-post-action/index.js --kind n
 ### Create cat-put action
 
 ```
-wsk action create cat-package/cat-put actions/cat-post-action/index.js --kind nodejs:10
+wsk action create cat-package/cat-put actions/cat-put-action/index.js --kind nodejs:10
 ```
 ### Create API endpoints
 
