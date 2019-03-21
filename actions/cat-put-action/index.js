@@ -42,7 +42,7 @@ function main(params) {
     });
 
     const catsDb = cloudant.use('cats');
-    catsDb.find({selector: {_id: params.id}})
+    catsDb.find({selector: {_id: params.id}, fields: ['_id','_rev','color', 'name']})
         .then(result => {
           if (result.docs[0]) {
             return result.docs[0];
@@ -57,19 +57,16 @@ function main(params) {
           const new_color = params.color ? params.color : cat.color;
           console.log(`new_name: ${new_name}`);
           console.log(`new_color: ${new_color}`);
-          return catsDb.insert({
-            _id: cat._id,
-            _rev: cat._rev,
-            name: params.name,
-            color: params.color
-          })
+          // return catsDb.insert({name:new_name, color:new_color}, cat._id)
+          return catsDb.insert(
+              {_id: cat._id, _rev: cat._rev, name: new_name, color: new_color})
         })
         .then(result => {
           console.log(result);
           resolve({
             statusCode: 200,
             headers: {'Content-Type': 'application/json'},
-            body: {success: 'Cat updated.'}
+            body: {success: 'Cat updated.', id: result.id}
           });
         })
         .catch(err => {
