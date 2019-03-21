@@ -94,7 +94,7 @@ function uninstall() {
   echo -e "Uninstalling..."
 
   echo "Removing API actions..."
-  ibmcloud fn api delete /cat-v1
+  ibmcloud fn api delete /cats-v1
 
   echo "Removing actions..."
   ibmcloud fn action delete cat-package/cat-post
