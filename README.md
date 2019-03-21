@@ -78,7 +78,7 @@ wsk action invoke cat-package/cat-get -p id "35790b1e95675fc7569b7d2d1c5a4e1a" -
 
 ### Create cat-delete action
 ```
-wsk action create cat-package/cat-delete actions/cat-get-action/index.js --kind nodejs:10
+wsk action create cat-package/cat-delete actions/cat-delete-action/index.js --kind nodejs:10
 ```
 The action first finds the cat with the provided `id` and then `destroys` the cat.
 ### Create cat-post action
@@ -105,7 +105,7 @@ wsk api create /cats-v1 /cat DELETE cat-package/cat-delete -n 'cat api'
 
 ```
 wsk action update cat-package/cat-post --web true
-wsk api create /cats-v1 /cat POST cat-package/cat-POST -n 'cat api'
+wsk api create /cats-v1 /cat POST cat-package/cat-post -n 'cat api'
 ```
 
 
