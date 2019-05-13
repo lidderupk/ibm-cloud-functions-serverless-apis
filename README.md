@@ -133,7 +133,12 @@ Show them how to get the servicename from the UI and the command line.
 ![](docs/sendgrid.jpg)
 
 ### Create send-email action
-Creat the zip file so that the node_modules are packaged up inside our installable.
+First install all the npm modules required by the send_email action
+```
+  npm install
+```
+
+Create the zip file so that the node_modules are packaged up inside our installable.
 ```
 zip -r sendmail.zip .
 ```
